@@ -1,0 +1,8 @@
+name: Get Info
+
+on:
+  workflow_dispatch:
+
+jobs:
+  info:
+    uses: chanelcolgate/started-forex-trading-python-algorithm/.github/workflows/repo-info.yml@main

@@ -1,0 +1,52 @@
+name: odoo Docker Image CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test_deploy:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:11
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options:  --health-cmd pg_isready
+                  --health-interval=10s
+                  --health-timeout=5s
+                  --health-retries=5
+      junariodoo:
+        image: junari/odoo:14.0
+        volumes:
+          - junari-odoo-data:/opt/odoo/data
+        ports:
+          - 8069:8069
+        env:
+          DB_HOST: postgres
+          DB_PORT: 5432
+          DB_USER: odoo
+          DB_PASSWORD: odoo
+        options: --name junariodoo
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create Postgresql user
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE USER odoo; ALTER ROLE odoo WITH PASSWORD 'odoo';"
+      - name: Create Odoo database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE odoo ENCODING 'UTF8';"
+      - name: Sleep
+        uses: jakejarvis/wait-action@master
+        with:
+          time: '60s'
+      - name: Check running containers
+        run: docker ps
+      - name: Initialize Odoo Container
+        env:
+          DB_HOST: postgres
+          DB_PORT: 5432
+          DB_USER: odoo
+          DB_PASSWORD: odoo
+        run: docker exec -d junariodoo python3 /opt/odoo/odoo/odoo-bin --db_host=$DB_HOST --db_port=$DB_PORT --db_user=$DB_USER --db_password=$DB_PASSWORD -d odoo -i base --without-demo=all
